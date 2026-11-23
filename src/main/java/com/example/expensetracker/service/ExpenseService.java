@@ -1,54 +1,87 @@
 package com.example.expensetracker.service;
 
+import com.example.expensetracker.dto.CategorySummary;
 import com.example.expensetracker.dto.ExpenseRequest;
 import com.example.expensetracker.entity.Expense;
+import com.example.expensetracker.entity.User;
 import com.example.expensetracker.exception.ResourceNotFoundException;
 import com.example.expensetracker.repository.ExpenseRepository;
+import com.example.expensetracker.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ExpenseService {
 
-    private final ExpenseRepository repository;
+    private final ExpenseRepository expenseRepository;
+    private final UserRepository userRepository;
 
-    public ExpenseService(ExpenseRepository repository) {
-        this.repository = repository;
+    public ExpenseService(ExpenseRepository expenseRepository, UserRepository userRepository) {
+        this.expenseRepository = expenseRepository;
+        this.userRepository = userRepository;
     }
 
-    public List<Expense> getAll(String category) {
+    private User getUserByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+    }
+
+    public List<Expense> getAllForUser(String username, String category) {
+        User user = getUserByUsername(username);
         if (category != null && !category.isBlank()) {
-            return repository.findByCategoryIgnoreCase(category);
+            return expenseRepository.findByUserAndCategoryIgnoreCase(user, category);
         }
-        return repository.findAll();
+        return expenseRepository.findByUser(user);
     }
 
-    public Expense getById(Long id) {
-        return repository.findById(id)
+    public Expense getByIdForUser(Long id, String username) {
+        User user = getUserByUsername(username);
+        return expenseRepository.findByIdAndUser(id, user)
                 .orElseThrow(() -> new ResourceNotFoundException("Expense not found with ID: " + id));
     }
 
-    public Expense create(ExpenseRequest request) {
+    public Expense createForUser(ExpenseRequest request, String username) {
+        User user = getUserByUsername(username);
         Expense expense = new Expense(
                 request.description(),
                 request.amount(),
                 request.category(),
-                request.date()
+                request.date(),
+                user
         );
-        return repository.save(expense);
+        return expenseRepository.save(expense);
     }
 
-    public Expense update(Long id, ExpenseRequest request) {
-        Expense existing = getById(id);
+    public Expense updateForUser(Long id, ExpenseRequest request, String username) {
+        Expense existing = getByIdForUser(id, username);
         existing.setDescription(request.description());
         existing.setAmount(request.amount());
         existing.setCategory(request.category());
         existing.setDate(request.date());
-        return repository.save(existing);
+        return expenseRepository.save(existing);
     }
 
-    public void delete(Long id) {
-        Expense existing = getById(id);
-        repository.delete(existing);
+    public void deleteForUser(Long id, String username) {
+        Expense existing = getByIdForUser(id, username);
+        expenseRepository.delete(existing);
+    }
+
+    public List<CategorySummary> getCategorySummaryForUser(String username) {
+        User user = getUserByUsername(username);
+        return expenseRepository.findTotalByCategoryForUser(user);
+    }
+
+    public Map<String, Object> getTotalBetweenDatesForUser(String username, LocalDate startDate, LocalDate endDate) {
+        User user = getUserByUsername(username);
+        BigDecimal total = expenseRepository.findTotalBetweenDatesForUser(user, startDate, endDate);
+        return Map.of(
+                "startDate", startDate,
+                "endDate", endDate,
+                "totalSpent", total
+        );
     }
 }
+
