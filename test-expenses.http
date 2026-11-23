@@ -1,0 +1,47 @@
+### GET request to example server
+GET https://examples.http-client.intellij.net/get
+    ?generated-in=IntelliJ IDEA
+
+###
+### 1. Create a valid expense (Expect: 201 Created)
+POST http://localhost:8080/api/expenses
+Content-Type: application/json
+
+{
+  "description": "Groceries and fresh produce",
+  "amount": 1850.50,
+  "category": "Food",
+  "date": "2026-11-23"
+}
+
+### 2. Trigger validation errors (Expect: 400 Bad Request with field errors)
+POST http://localhost:8080/api/expenses
+Content-Type: application/json
+
+{
+  "description": "",
+  "amount": -100,
+  "category": "",
+  "date": "2026-11-23"
+}
+
+### 3. Get all expenses (Expect: 200 OK with JSON array)
+GET http://localhost:8080/api/expenses
+
+### 4. Update expense ID 1 (Expect: 200 OK)
+PUT http://localhost:8080/api/expenses/1
+Content-Type: application/json
+
+{
+  "description": "Supermarket groceries",
+  "amount": 2100.00,
+  "category": "Food",
+  "date": "2026-11-23"
+}
+
+### 5. Trigger 404 Not Found error (Expect: 404 Not Found)
+GET http://localhost:8080/api/expenses/999
+
+### 6. Delete expense ID 1 (Expect: 204 No Content)
+DELETE http://localhost:8080/api/expenses/1
+
